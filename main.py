@@ -67,25 +67,58 @@ async def message_handler(request: web.Request):
         data = await request.read()
         logger.info("Handle Post webdata: %s", data)
         recv_msg = receive.parse_xml(data)
-        to_user = recv_msg.FromUserName
-        from_user = recv_msg.ToUserName
-        if isinstance(recv_msg, receive.TextMsg):
-            keyword = recv_msg.Content.decode()
-            pattern = '\w+[ -]\d+'
-            if re.match(pattern, keyword):
-                pass
-            links = await fetch(keyword)
-            if links:
-                content = links[0]
-            else:
-                content = 'Nothing can be found'
-        else:
-            content = 'Unsupported message type'
-        reply_msg = reply.TextMsg(to_user, from_user, content)
+        reply_msg = await handle_message(recv_msg)
         return web.Response(text=reply_msg.send())
     except Exception as e:
         logger.exception('Unhandled exception:')
         return web.Response(text=str(e), status=500)
+
+
+async def handle_message(msg: receive.Msg) -> reply.Msg:
+    if isinstance(msg, receive.TextMsg):
+        reply_msg = await text_message_handler(msg)
+    elif isinstance(msg, receive.ImageMsg):
+        reply_msg = await image_message_handler(msg)
+    elif isinstance(msg, receive.EventMsg):
+        reply_msg = await event_message_handler(msg)
+    else:
+        to_user = msg.FromUserName
+        from_user = msg.ToUserName
+        reply_msg = reply.TextMsg(to_user, from_user, 'Fuck you!')
+    return reply_msg
+
+
+async def text_message_handler(msg: receive.TextMsg):
+    to_user = msg.FromUserName
+    from_user = msg.ToUserName
+    keyword = msg.Content.decode()
+    pattern = '\w+[ -]\d+'
+    if re.match(pattern, keyword):
+        links = await fetch(keyword)
+        if links:
+            content = links[0]
+        else:
+            content = 'Nothing can be found'
+    else:
+        content = 'Illegal keyword'
+    return reply.TextMsg(to_user, from_user, content)
+
+
+async def event_message_handler(msg: receive.EventMsg):
+    to_user = msg.FromUserName
+    from_user = msg.ToUserName
+    if msg.Event == 'subscribe':
+        content = "I'm an easy way to find your precious."
+    else:
+        content = 'Unsupported message type'
+    return reply.TextMsg(to_user, from_user, content)
+
+
+async def image_message_handler(msg: receive.ImageMsg):
+    to_user = msg.FromUserName
+    from_user = msg.ToUserName
+    content = 'I have no idea.'
+    return reply.TextMsg(to_user, from_user, content)
 
 
 def main():
