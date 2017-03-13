@@ -26,7 +26,7 @@ logging.basicConfig(level=logging.INFO, format=fmt, handlers=[handler])
 logger = logging.getLogger(__name__)
 
 
-async def wx_handler(request: web.Request):
+async def auth_handler(request: web.Request):
     try:
         logger.info('Got auth request: %s', request.query_string)
         data = request.GET
@@ -82,13 +82,17 @@ async def handle_message(msg: receive.Msg) -> reply.Msg:
     elif isinstance(msg, receive.EventMsg):
         reply_msg = await event_message_handler(msg)
     else:
-        to_user = msg.FromUserName
-        from_user = msg.ToUserName
-        reply_msg = reply.TextMsg(to_user, from_user, 'Fuck you!')
+        reply_msg = await fallback_handler(msg)
     return reply_msg
 
 
-async def text_message_handler(msg: receive.TextMsg):
+async def fallback_handler(msg: receive.Msg) -> reply.Msg:
+    to_user = msg.FromUserName
+    from_user = msg.ToUserName
+    return reply.TextMsg(to_user, from_user, 'Fuck you!')
+
+
+async def text_message_handler(msg: receive.TextMsg) -> reply.Msg:
     to_user = msg.FromUserName
     from_user = msg.ToUserName
     keyword = msg.Content.decode()
@@ -104,7 +108,7 @@ async def text_message_handler(msg: receive.TextMsg):
     return reply.TextMsg(to_user, from_user, content)
 
 
-async def event_message_handler(msg: receive.EventMsg):
+async def event_message_handler(msg: receive.EventMsg) -> reply.Msg:
     to_user = msg.FromUserName
     from_user = msg.ToUserName
     if msg.Event == 'subscribe':
@@ -114,7 +118,7 @@ async def event_message_handler(msg: receive.EventMsg):
     return reply.TextMsg(to_user, from_user, content)
 
 
-async def image_message_handler(msg: receive.ImageMsg):
+async def image_message_handler(msg: receive.ImageMsg) -> reply.Msg:
     to_user = msg.FromUserName
     from_user = msg.ToUserName
     content = 'I have no idea.'
@@ -124,7 +128,7 @@ async def image_message_handler(msg: receive.ImageMsg):
 def main():
     app = web.Application(logger=logger)
 
-    app.router.add_get('/wx', wx_handler)
+    app.router.add_get('/wx', auth_handler)
     app.router.add_post('/wx', message_handler)
 
     web.run_app(app, port=80)
