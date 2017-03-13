@@ -51,7 +51,7 @@ async def auth_handler(request: web.Request):
 
 
 async def fetch(keyword):
-    url = 'https://thepiratebay.org/search/%s/0/99/0' % keyword
+    url = 'https://thepiratebay.org/search/{}/0/99/0'.format(keyword)
     async with aiohttp.ClientSession() as session:
         rsp = await session.get(url)
         if rsp.status != 200:
@@ -96,7 +96,7 @@ async def text_message_handler(msg: receive.TextMsg) -> reply.Msg:
     to_user = msg.FromUserName
     from_user = msg.ToUserName
     keyword = msg.Content.decode()
-    pattern = '\w+[ -]\d+'
+    pattern = r'[a-zA-Z]+[ \-]\d+'
     if re.match(pattern, keyword):
         links = await fetch(keyword)
         if links:
