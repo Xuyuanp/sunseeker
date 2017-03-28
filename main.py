@@ -5,10 +5,13 @@ import hashlib
 import logging
 import os
 import re
+import string
 import sys
+from random import choice
 
 import aiohttp
 import bs4
+import time
 from aiohttp import web
 
 import receive
@@ -96,6 +99,8 @@ async def on_text_message(msg: receive.TextMsg) -> reply.Msg:
     to_user = msg.FromUserName
     from_user = msg.ToUserName
     keyword = msg.Content
+    if keyword.lower() == 'lucky':
+        return await on_lucky_message(msg)
     pattern = r'[a-zA-Z]+[ \-]?\d+'
     if re.match(pattern, keyword):
         links = await fetch(keyword)
@@ -106,6 +111,20 @@ async def on_text_message(msg: receive.TextMsg) -> reply.Msg:
     else:
         content = 'Illegal keyword'
     return reply.TextMsg(to_user, from_user, content)
+
+
+async def on_lucky_message(msg: receive.TextMsg) -> reply.Msg:
+    to_user = msg.FromUserName
+    from_user = msg.ToUserName
+    while True:
+        length = 3 if int(time.time()) % 2 else 4
+        chs = ''.join(choice(string.ascii_uppercase) for _ in range(length))
+        nums = ''.join(choice(string.digits) for _ in range(3))
+        keyword = '{0} {1}'.format(chs, nums)
+        links = await fetch(keyword)
+        if links:
+            content = links[0]
+            return reply.TextMsg(to_user, from_user, content)
 
 
 async def on_event_message(msg: receive.EventMsg) -> reply.Msg:
