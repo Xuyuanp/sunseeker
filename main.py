@@ -4,11 +4,11 @@
 import hashlib
 import logging
 import os
+import re
 import sys
 
 import aiohttp
 import bs4
-import re
 from aiohttp import web
 
 import receive
@@ -18,8 +18,8 @@ WX_TOKEN = os.getenv('WX_TOKEN')
 WX_AESKEY = os.getenv('WX_AESKEY', '')
 LOG_FILE = os.getenv('LOG_FILE', '')
 
-stream = open(LOG_FILE, 'a+') if LOG_FILE else sys.stdout
-handler = logging.StreamHandler(stream)
+handler = logging.FileHandler(LOG_FILE) if LOG_FILE \
+    else logging.StreamHandler(sys.stdout)
 fmt = '%(asctime)s %(levelname)s %(lineno)3d - %(message)s'
 logging.basicConfig(level=logging.INFO, format=fmt, handlers=[handler])
 
@@ -76,27 +76,27 @@ async def message_handler(request: web.Request):
 
 async def handle_message(msg: receive.Msg) -> reply.Msg:
     if isinstance(msg, receive.TextMsg):
-        reply_msg = await text_message_handler(msg)
+        reply_msg = await on_text_message(msg)
     elif isinstance(msg, receive.ImageMsg):
-        reply_msg = await image_message_handler(msg)
+        reply_msg = await on_image_message(msg)
     elif isinstance(msg, receive.EventMsg):
-        reply_msg = await event_message_handler(msg)
+        reply_msg = await on_event_message(msg)
     else:
-        reply_msg = await fallback_handler(msg)
+        reply_msg = await on_other_message(msg)
     return reply_msg
 
 
-async def fallback_handler(msg: receive.Msg) -> reply.Msg:
+async def on_other_message(msg: receive.Msg) -> reply.Msg:
     to_user = msg.FromUserName
     from_user = msg.ToUserName
     return reply.TextMsg(to_user, from_user, 'Fuck you!')
 
 
-async def text_message_handler(msg: receive.TextMsg) -> reply.Msg:
+async def on_text_message(msg: receive.TextMsg) -> reply.Msg:
     to_user = msg.FromUserName
     from_user = msg.ToUserName
-    keyword = msg.Content.decode()
-    pattern = r'[a-zA-Z]+[ \-]\d+'
+    keyword = msg.Content
+    pattern = r'[a-zA-Z]+[ \-]?\d+'
     if re.match(pattern, keyword):
         links = await fetch(keyword)
         if links:
@@ -108,7 +108,7 @@ async def text_message_handler(msg: receive.TextMsg) -> reply.Msg:
     return reply.TextMsg(to_user, from_user, content)
 
 
-async def event_message_handler(msg: receive.EventMsg) -> reply.Msg:
+async def on_event_message(msg: receive.EventMsg) -> reply.Msg:
     to_user = msg.FromUserName
     from_user = msg.ToUserName
     if msg.Event == 'subscribe':
@@ -118,7 +118,7 @@ async def event_message_handler(msg: receive.EventMsg) -> reply.Msg:
     return reply.TextMsg(to_user, from_user, content)
 
 
-async def image_message_handler(msg: receive.ImageMsg) -> reply.Msg:
+async def on_image_message(msg: receive.ImageMsg) -> reply.Msg:
     to_user = msg.FromUserName
     from_user = msg.ToUserName
     content = 'I have no idea.'

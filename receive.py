@@ -1,13 +1,13 @@
 #! /usr/bin/env python
 # -*- coding:utf-8 -*-
 # by pxy 2017-03-10 15:40:18
-import xml.etree.ElementTree as et
+from xml.etree.ElementTree import fromstring
 
 
 def parse_xml(web_data):
     if len(web_data) == 0:
         return None
-    xml_data = et.fromstring(web_data)
+    xml_data = fromstring(web_data)
     msg_type = xml_data.find('MsgType').text
     if msg_type == 'text':
         return TextMsg(xml_data)
@@ -23,16 +23,13 @@ class Msg(object):
         self.FromUserName = xml_data.find('FromUserName').text
         self.CreateTime = xml_data.find('CreateTime').text
         self.MsgType = xml_data.find('MsgType').text
-        try:
-            self.MsgId = xml_data.find('MsgId').text
-        except:
-            self.MsgId = None
 
 
 class TextMsg(Msg):
     def __init__(self, xml_data):
         super().__init__(xml_data)
-        self.Content = xml_data.find('Content').text.encode("utf-8")
+        self.Content = xml_data.find('Content').text
+        self.MsgId = xml_data.find('MsgId').text
 
 
 class ImageMsg(Msg):
